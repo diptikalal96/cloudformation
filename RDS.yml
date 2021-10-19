@@ -1,0 +1,160 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: RDS Storage Encrypted
+Parameters:
+  SourceDBInstanceIdentifier:
+    Type: String
+  DBInstanceType:
+    Type: String
+  SourceRegion:
+    Type: String
+  DBName1:
+    Description: The database name
+    Type: String
+    MinLength: '1'
+    MaxLength: '64'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric
+      characters.
+
+  DBName2:
+    Description: The database name
+    Type: String
+    MinLength: '1'
+    MaxLength: '64'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric
+      characters.
+
+  DBUser:
+    NoEcho: 'true'
+    Description: The database admin account username
+    Type: String
+    MinLength: '1'
+    MaxLength: '16'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric
+      characters.
+  DBPassword:
+    NoEcho: 'true'
+    Description: The database admin account password
+    Type: String
+    MinLength: '1'
+    MaxLength: '41'
+    AllowedPattern: '[a-zA-Z0-9]+'
+    ConstraintDescription: must contain only alphanumeric characters.
+  DBAllocatedStorage:
+    Description: The size of the database (Gb)
+    Type: Number
+    MinValue: '5'
+    MaxValue: '1024'
+    ConstraintDescription: must be between 5 and 1024Gb.
+  DBInstanceClass:
+    Description: The database instance type
+    Type: String
+    AllowedValues: [db.t1.micro, db.m1.small, db.m1.medium, db.m1.large, db.m1.xlarge,
+      db.m2.xlarge, db.m2.2xlarge, db.m2.4xlarge, db.m3.medium, db.m3.large, db.m3.xlarge,
+      db.m3.2xlarge, db.m4.large, db.m4.xlarge, db.m4.2xlarge, db.m4.4xlarge, db.m4.10xlarge,
+      db.r3.large, db.r3.xlarge, db.r3.2xlarge, db.r3.4xlarge, db.r3.8xlarge, db.m2.xlarge,
+      db.m2.2xlarge, db.m2.4xlarge, db.cr1.8xlarge, db.t2.micro, db.t2.small, db.t2.medium,
+      db.t2.large]
+    ConstraintDescription: must select a valid database instance type.
+
+Resources:
+  MyKey:
+    Type: 'AWS::KMS::Key'
+    Properties:
+      EnableKeyRotation: 'True'
+      PendingWindowInDays: 7
+      KeyPolicy:
+        Version: 2012-10-17
+        Id: key-default-1
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Join 
+                - ''
+                - - 'arn:aws:iam::'
+                  - '618393550001'
+                  - ':root'
+            Action: kms:*
+            Resource: '*'
+          - Sid: Allow administration of the key
+            Effect: Allow
+            Principal:
+              AWS: !Join 
+                - ''
+                - - 'arn:aws:iam::'
+                  - '618393550001'
+                  - ':role/RDSCFN-Role'
+            Action: 
+            - kms:Create*
+            - kms:Describe*
+            - kms:Enable*
+            - kms:List*
+            - kms:Put*
+            - kms:Update*
+            - kms:Revoke*
+            - kms:Disable*
+            - kms:Get*
+            - kms:Delete*
+            - kms:ScheduleKeyDeletion
+            - kms:CancelKeyDeletion
+            Resource: '*'
+          - Sid: Allow use of the key
+            Effect: Allow
+            Principal:
+              AWS: !Join 
+                - ''
+                - - 'arn:aws:iam::'
+                  - '618393550001'
+                  - ':role/RDSCFN-Role'
+            Action:
+            - kms:DescribeKey
+            - kms:Encrypt
+            - kms:Decrypt
+            - kms:ReEncrypt
+            - kms:GenerateDataKey*
+            - kms:GenerateDataKeyWithoutPlaintext
+            Resource: '*'
+
+  LoanDB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBName: !Ref 'DBName1'
+      AllocatedStorage: !Ref 'DBAllocatedStorage'
+      DBInstanceClass: !Ref 'DBInstanceClass'
+      DBInstanceIdentifier: !Ref 'DBName1'
+      Engine: MySQL
+      KmsKeyId: !Ref MyKey
+      MasterUsername: !Ref 'DBUser'
+      MasterUserPassword: !Ref 'DBPassword'
+      MultiAZ: false
+      StorageEncrypted: true
+      Tags:
+      - Key: Name
+        Value: Loan Database
+    DeletionPolicy: Snapshot
+
+  CreditDB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBName: !Ref 'DBName2'
+      AllocatedStorage: !Ref 'DBAllocatedStorage'
+      DBInstanceClass: !Ref 'DBInstanceClass'
+      DBInstanceIdentifier: !Ref 'DBName2'
+      Engine: MySQL
+      KmsKeyId: !Ref MyKey
+      MasterUsername: !Ref 'DBUser'
+      MasterUserPassword: !Ref 'DBPassword'
+      MultiAZ: false
+      StorageEncrypted: true
+      Tags:
+      - Key: Name
+        Value: Credit Database
+    DeletionPolicy: Snapshot
+
+Outputs:
+  InstanceId:
+    Description: InstanceId of the newly created RDS Instance
+    Value: !Ref LoanDB
