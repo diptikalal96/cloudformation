@@ -1,12 +1,7 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: RDS Storage Encrypted
 Parameters:
-  SourceDBInstanceIdentifier:
-    Type: String
-  DBInstanceType:
-    Type: String
-  SourceRegion:
-    Type: String
+
   DBName1:
     Description: The database name
     Type: String
